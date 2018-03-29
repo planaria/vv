@@ -1,0 +1,14 @@
+#include <public.sdk/source/common/pluginview.cpp>
+#include <public.sdk/source/main/dllmain.cpp>
+#include <public.sdk/source/main/pluginfactoryvst3.cpp>
+#include <public.sdk/source/vst3stdsdk.cpp>
+#include <public.sdk/source/vst/vstinitiids.cpp>
+#include <base/source/fobject.cpp>
+#include <base/source/fstring.cpp>
+#include <base/source/fdebug.cpp>
+#include <base/source/baseiids.cpp>
+#include <base/source/updatehandler.cpp>
+#include <base/thread/source/flock.cpp>
+#include <pluginterfaces/base/funknown.cpp>
+#include <pluginterfaces/base/ustring.cpp>
+#include <pluginterfaces/base/coreiids.cpp>
