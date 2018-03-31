@@ -119,17 +119,14 @@ namespace vv
 				std::size_t last_src2 = 0;
 				double last_src_ratio = 0.0;
 
-				auto cubed = [](double x)
+				auto easing = [&](double x)
 				{
-					return x * x * x;
+					return (1.0 - std::cos(boost::math::constants::pi<double>() * x)) / 2.0;
 				};
 
 				auto interpolate = [&](double x1, double x2, double ratio)
 				{
-					if (ratio < 0.5)
-						return lerp(x1, x2, cubed(ratio) * 4.0);
-					else
-						return lerp(x1, x2, 1.0 - cubed(1.0 - ratio) * 4.0);
+					return lerp(x1, x2, easing(ratio));
 				};
 
 				auto get_value = [&](double indexf) -> double
