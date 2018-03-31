@@ -18,14 +18,16 @@ namespace vv
 	public:
 
 		static const std::size_t buffer_size = 4096;
+		static const std::size_t nsdf_size = buffer_size / 2;
 
 		explicit processor(double sampleRate)
 			: sampleRate_(sampleRate)
 			, v1_(buffer_size)
-			, v2_(buffer_size)
-			, v3_(buffer_size)
-			, v4_(buffer_size)
-			, v5_(buffer_size)
+			, v2_(buffer_size + nsdf_size)
+			, v3_(buffer_size + nsdf_size)
+			, v4_(buffer_size + nsdf_size)
+			, v5_(buffer_size + nsdf_size)
+			, v6_(buffer_size)
 		{
 		}
 
@@ -37,34 +39,67 @@ namespace vv
 			for (std::size_t i = 0; i < buffer_size; ++i)
 			{
 				auto r = static_cast<float>(i) / static_cast<float>(buffer_size);
-				v2_[i] = v1_[i] * (0.54f - 0.46f * std::cos(boost::math::constants::two_pi<float>() * r));
+				auto w = 0.5f - 0.5f * std::cos(boost::math::constants::two_pi<float>() * r);
+				v2_[i] = v1_[i] * w;
 			}
 
 			fft_.transform(v2_.data(), v3_.data());
 
-			for (std::size_t i = 0; i < buffer_size; ++i)
+			for (std::size_t i = 0; i < buffer_size + nsdf_size; ++i)
 				v4_[i] = std::norm(v3_[i]);
 
 			ifft_.transform(v4_.data(), v5_.data());
 
+			float m = 0.0;
+
+			for (std::size_t i = 0; i < buffer_size; ++i)
+			{
+				auto j = buffer_size - i - 1;
+
+				auto x1 = v2_[i].real();
+				m += x1 * x1;
+
+				auto x2 = v2_[j].real();
+				m += x2 * x2;
+
+				if (m < std::numeric_limits<double>::min())
+					v6_[j] = 0.0f;
+				else
+					v6_[j] = 2.0f * v5_[j].real() / m;
+			}
+
+			auto minimum_hz = 50.0;
+			auto maximum_hz = 1000.0;
+
+			auto minimum_index = static_cast<std::size_t>(std::round(sampleRate_ / maximum_hz));
+			auto maximum_index = static_cast<std::size_t>(std::round(sampleRate_ / minimum_hz));
+
+			double maximum_value = 0.0;
+
+			for (std::size_t i = minimum_index; i < maximum_index; ++i)
+			{
+				auto p1 = v6_[i - 1];
+				auto p2 = v6_[i];
+				auto p3 = v6_[i + 1];
+
+				if (p1 < p2 && p2 > p3 && p2 > maximum_value)
+					maximum_value = p2;
+			}
+
 			boost::optional<std::size_t> peak_index;
 			double peak_value = 0.0;
 
-			auto minimum_fz = 50.0;
-			auto maximum_fz = 1000.0;
-
-			auto minimum_index = static_cast<std::size_t>(std::round(sampleRate_ / maximum_fz));
-			auto maximum_index = static_cast<std::size_t>(std::round(sampleRate_ / minimum_fz));
-
-			for (std::size_t i = minimum_index; i <= maximum_index; ++i)
+			for (std::size_t i = minimum_index; i < maximum_index; ++i)
 			{
-				auto p1 = v5_[i - 1].real();
-				auto p2 = v5_[i].real();
+				auto p1 = v6_[i - 1];
+				auto p2 = v6_[i];
+				auto p3 = v6_[i + 1];
 
-				if (p1 < p2 && p2 > peak_value)
+				if (p1 < p2 && p2 > p3 && p2 > maximum_value * 0.95)
 				{
 					peak_index = i;
 					peak_value = p2;
+					break;
 				}
 			}
 
@@ -176,14 +211,15 @@ namespace vv
 
 		double sampleRate_;
 
-		kissfft<float> fft_{ buffer_size, false };
-		kissfft<float> ifft_{ buffer_size, true };
+		kissfft<float> fft_{ buffer_size + nsdf_size, false };
+		kissfft<float> ifft_{ buffer_size + nsdf_size, true };
 
 		std::vector<std::complex<float>> v1_;
 		std::vector<std::complex<float>> v2_;
 		std::vector<std::complex<float>> v3_;
 		std::vector<std::complex<float>> v4_;
 		std::vector<std::complex<float>> v5_;
+		std::vector<float> v6_;
 
 	};
 
