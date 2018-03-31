@@ -1,5 +1,6 @@
 #pragma once
 #include <public.sdk/source/vst/vsteditcontroller.h>
+#include <pluginterfaces/base/ibstream.h>
 
 namespace vv
 {
@@ -19,6 +20,29 @@ namespace vv
 
 			this->parameters.addParameter(STR16("Pitch"), STR16(""), 0, 0.5, Steinberg::Vst::ParameterInfo::kCanAutomate, pitch_tag);
 			this->parameters.addParameter(STR16("Formant"), STR16(""), 0, 0.5, Steinberg::Vst::ParameterInfo::kCanAutomate, formant_tag);
+
+			return Steinberg::kResultOk;
+		}
+
+		Steinberg::tresult PLUGIN_API setComponentState(Steinberg::IBStream* state) override
+		{
+			Steinberg::tresult ret;
+
+			double pitch_shift = 0.0;
+			ret = state->read(&pitch_shift, sizeof(pitch_shift));
+			if (ret != Steinberg::kResultOk)
+				return ret;
+
+			double formant_shift = 0.0;
+			ret = state->read(&formant_shift, sizeof(formant_shift));
+			if (ret != Steinberg::kResultOk)
+				return ret;
+
+			pitch_shift = this->plainParamToNormalized(pitch_tag, pitch_shift);
+			this->setParamNormalized(pitch_tag, pitch_shift);
+
+			formant_shift = this->plainParamToNormalized(formant_tag, formant_shift);
+			this->setParamNormalized(formant_tag, formant_shift);
 
 			return Steinberg::kResultOk;
 		}

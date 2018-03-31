@@ -3,6 +3,7 @@
 #include "processor.hpp"
 #include <public.sdk/source/vst/vstaudioeffect.h>
 #include <pluginterfaces/vst/ivstparameterchanges.h>
+#include <pluginterfaces/base/ibstream.h>
 #include <boost/circular_buffer.hpp>
 #include <vector>
 
@@ -33,6 +34,36 @@ namespace vv
 				return Steinberg::kResultFalse;
 
 			return Steinberg::Vst::AudioEffect::setBusArrangements(inputs, numIns, outputs, numOuts);
+		}
+
+		Steinberg::tresult PLUGIN_API setState(Steinberg::IBStream* state) override
+		{
+			Steinberg::tresult ret;
+
+			ret = state->read(&pitch_shift_raw_, sizeof(pitch_shift_raw_));
+			if (ret != Steinberg::kResultOk)
+				return ret;
+
+			ret = state->read(&formant_shift_raw_, sizeof(formant_shift_raw_));
+			if (ret != Steinberg::kResultOk)
+				return ret;
+
+			return Steinberg::kResultOk;
+		}
+
+		Steinberg::tresult PLUGIN_API getState(Steinberg::IBStream* state) override
+		{
+			Steinberg::tresult ret;
+
+			ret = state->write(&pitch_shift_raw_, sizeof(pitch_shift_raw_));
+			if (ret != Steinberg::kResultOk)
+				return ret;
+			
+			ret = state->write(&formant_shift_raw_, sizeof(formant_shift_raw_));
+			if (ret != Steinberg::kResultOk)
+				return ret;
+
+			return Steinberg::kResultOk;
 		}
 
 		Steinberg::tresult PLUGIN_API setupProcessing(Steinberg::Vst::ProcessSetup& setup) override
@@ -73,10 +104,10 @@ namespace vv
 						switch (tag)
 						{
 						case edit_controller::pitch_tag:
-							processor_->set_pitch_shift(std::pow(2.0, (value - 0.5) * 2.0));
+							pitch_shift_raw_ = value;
 							break;
 						case edit_controller::formant_tag:
-							processor_->set_formant_shift(std::pow(2.0, (value - 0.5) * 2.0));
+							formant_shift_raw_ = value;
 							break;
 						}
 					}
@@ -94,7 +125,10 @@ namespace vv
 				{
 					std::copy(in_buffer_.begin(), in_buffer_.end(), temp_input_.begin());
 
-					(*processor_)(temp_input_.data(), temp_output_.data());
+					auto pitch_shift = std::pow(2.0, (pitch_shift_raw_ - 0.5) * 2.0);
+					auto formant_shift = std::pow(2.0, (formant_shift_raw_ - 0.5) * 2.0);
+
+					(*processor_)(temp_input_.data(), temp_output_.data(), pitch_shift, formant_shift);
 
 					out_buffer_.assign(temp_output_.begin(), temp_output_.end());
 					in_buffer_.clear();
@@ -142,6 +176,9 @@ namespace vv
 		boost::circular_buffer<float> out_buffer_;
 		std::vector<float> temp_input_;
 		std::vector<float> temp_output_;
+
+		double pitch_shift_raw_ = 0.5;
+		double formant_shift_raw_ = 0.5;
 
 		std::unique_ptr<processor> processor_;
 

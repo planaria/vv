@@ -26,24 +26,11 @@ namespace vv
 			, v3_(buffer_size)
 			, v4_(buffer_size)
 			, v5_(buffer_size)
-			, v6_(buffer_size)
 		{
 		}
 
-		void set_pitch_shift(double value)
+		void operator ()(const float* input, float* output, double pitch_shift, double formant_shift)
 		{
-			pitch_shift_ = value;
-		}
-
-		void set_formant_shift(double value)
-		{
-			formant_shift_ = value;
-		}
-
-		void operator ()(const float* input, float* output)
-		{
-			std::fill_n(output, buffer_size, 0.0f);
-
 			for (std::size_t i = 0; i < buffer_size; ++i)
 				v1_[i] = std::complex<float>(input[i], 0.0f);
 
@@ -85,7 +72,7 @@ namespace vv
 
 			if (peak_index)
 			{
-				auto virtual_peak_index = static_cast<std::size_t>(std::round(*peak_index));
+				auto virtual_peak_index = *peak_index;
 
 				std::size_t last_dst = 0;
 				std::size_t last_src1 = 0;
@@ -125,15 +112,15 @@ namespace vv
 					{
 						auto ratio = static_cast<double>(i - last_dst) / static_cast<double>(dst - last_dst);
 
-						auto p1_1 = get_value(static_cast<double>(last_src1) + static_cast<double>(i - last_dst) * formant_shift_);
-						auto p1_2 = get_value(static_cast<double>(last_src2) + static_cast<double>(i - last_dst) * formant_shift_);
+						auto p1_1 = get_value(static_cast<double>(last_src1) + static_cast<double>(i - last_dst) * formant_shift);
+						auto p1_2 = get_value(static_cast<double>(last_src2) + static_cast<double>(i - last_dst) * formant_shift);
 						auto p1 = interpolate(p1_1, p1_2, last_src_ratio);
 
-						auto p2_1 = get_value(static_cast<double>(src1) - static_cast<double>(dst - i) * formant_shift_);
-						auto p2_2 = get_value(static_cast<double>(src2) - static_cast<double>(dst - i) * formant_shift_);
+						auto p2_1 = get_value(static_cast<double>(src1) - static_cast<double>(dst - i) * formant_shift);
+						auto p2_2 = get_value(static_cast<double>(src2) - static_cast<double>(dst - i) * formant_shift);
 						auto p2 = interpolate(p2_1, p2_2, src_ratio);
 
-						v6_[i] = static_cast<float>(interpolate(p1, p2, ratio));
+						output[i] = static_cast<float>(interpolate(p1, p2, ratio));
 					}
 
 					last_dst = dst;
@@ -145,7 +132,7 @@ namespace vv
 				auto q = buffer_size / virtual_peak_index;
 				auto r = buffer_size % virtual_peak_index;
 
-				auto nf = (static_cast<double>(buffer_size) * pitch_shift_ - static_cast<double>(r)) / static_cast<double>(virtual_peak_index);
+				auto nf = (static_cast<double>(buffer_size) * pitch_shift - static_cast<double>(r)) / static_cast<double>(virtual_peak_index);
 				auto n = static_cast<std::size_t>(std::max(0.0, std::round(nf)));
 
 				if (q != 0 && n != 0)
@@ -177,8 +164,6 @@ namespace vv
 
 					overlap(buffer_size, buffer_size, buffer_size, 0.0);
 
-					std::copy(v6_.begin(), v6_.end(), output);
-
 					enable = true;
 				}
 			}
@@ -190,8 +175,6 @@ namespace vv
 	private:
 
 		double sampleRate_;
-		double pitch_shift_ = 1.0;
-		double formant_shift_ = 1.0;
 
 		kissfft<float> fft_{ buffer_size, false };
 		kissfft<float> ifft_{ buffer_size, true };
@@ -201,7 +184,6 @@ namespace vv
 		std::vector<std::complex<float>> v3_;
 		std::vector<std::complex<float>> v4_;
 		std::vector<std::complex<float>> v5_;
-		std::vector<float> v6_;
 
 	};
 

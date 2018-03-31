@@ -5,8 +5,6 @@
 int main()
 {
 	vv::processor p(44100.0);
-	p.set_pitch_shift(1.5);
-	p.set_formant_shift(1.2);
 
 	std::vector<float> input(vv::processor::buffer_size);
 
@@ -20,5 +18,5 @@ int main()
 
 	std::vector<float> output(vv::processor::buffer_size);
 
-	p(input.data(), output.data());
+	p(input.data(), output.data(), 1.5, 1.2);
 }
