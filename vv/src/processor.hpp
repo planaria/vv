@@ -103,6 +103,11 @@ namespace vv
 				}
 			}
 
+			if (!peak_index && last_peak_index_)
+				peak_index = last_peak_index_;
+
+			last_peak_index_ = peak_index;
+
 			bool enable = false;
 
 			if (peak_index)
@@ -220,6 +225,8 @@ namespace vv
 		std::vector<std::complex<float>> v4_;
 		std::vector<std::complex<float>> v5_;
 		std::vector<float> v6_;
+
+		boost::optional<std::size_t> last_peak_index_;
 
 	};
 
