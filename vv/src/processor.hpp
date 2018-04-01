@@ -58,8 +58,14 @@ namespace vv
 
 			fft_.transform(v2_.data(), v3_.data());
 
-			for (std::size_t i = 0; i < buffer_size + nsdf_size; ++i)
-				v4_[i] = std::norm(v3_[i]);
+			auto cutoff_hz = 800.0;
+			auto cutoff_index = static_cast<std::size_t>(std::round(cutoff_hz * static_cast<double>(buffer_size) / sampleRate_));
+
+			for (std::size_t i = 0; i < cutoff_index; ++i)
+			{
+				v4_[i + 1] = std::norm(v3_[i + 1]);
+				v4_[buffer_size - i - 1] = std::norm(v3_[buffer_size - i - 1]);
+			}
 
 			ifft_.transform(v4_.data(), v5_.data());
 
